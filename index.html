@@ -31,7 +31,15 @@ svg{position:fixed;inset:0;width:100vw;height:100vh}
 .legend{display:grid;grid-template-columns:16px 1fr;gap:8px 10px;font-size:13px;margin-top:8px}
 .dot{width:14px;height:14px;border-radius:50%}
 .hr{height:1px;background:linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);margin:10px 0}
-.inLabel{fill:#0c1624;font-weight:800;text-anchor:middle; font-size:14px; pointer-events:none}
+.inLabel{
+  font-weight:800;
+  text-anchor:middle;
+  font-size:15px;
+  pointer-events:none;
+  fill:#fff;
+  dominant-baseline:middle;
+  text-shadow:0 2px 8px #222;
+}
 .node{cursor:pointer;transition:transform .35s ease}
 .node:hover{transform:scale(1.04)}
 .link{stroke:var(--teal);stroke-width:2;opacity:.35;pointer-events:none}
@@ -39,9 +47,10 @@ svg{position:fixed;inset:0;width:100vw;height:100vh}
 .glow{animation:pulse 4s ease-in-out infinite;opacity:.95;mix-blend-mode:screen;pointer-events:none}
 @keyframes pulse{0%{filter:blur(18px) opacity(.7)}50%{filter:blur(28px) opacity(1)}100%{filter:blur(18px) opacity(.7)}}
 .tooltip{position:fixed;pointer-events:none;z-index:9999;background:linear-gradient(180deg, rgba(18,26,38,.96), rgba(12,18,27,.96));
-  border:1px solid rgba(255,255,255,.08);padding:12px 14px;border-radius:12px;font-size:14px;color:#e7f6f2;line-height:1.45;max-width:420px;
-  box-shadow:0 8px 28px rgba(0,0,0,.35);transform:translate(-50%,-120%);transition:opacity .18s ease, transform .18s ease;opacity:0}
-.tooltip b{font-weight:800;color:#ccf7ea}
+  border:1px solid rgba(255,255,255,.08);padding:14px 18px;border-radius:12px;font-size:15px;color:#e7f6f2;line-height:1.5;max-width:420px;
+  box-shadow:0 8px 28px rgba(0,0,0,.35);transform:translate(-50%,-120%);transition:opacity .18s ease, transform .18s ease;opacity:0;
+  font-size:15px;}
+.tooltip b{font-weight:900;color:#ccf7ea;font-size:17px;}
 .controls{position:fixed;left:18px;bottom:18px;display:flex;gap:8px;z-index:6;align-items:center;background:rgba(16,24,38,.7);
   padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.08);backdrop-filter: blur(6px)}
 button{background:#141f31;color:#cfe5ff;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;cursor:pointer;transition:background .2s ease}
@@ -76,7 +85,13 @@ button:hover{background:#1a2942}
 
 <svg id="scene" viewBox="0 0 1920 1080">
   <defs>
-    <filter id="softGlow"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic/></feMerge></filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
     <radialGradient id="centerGlow"><stop offset="0%" stop-color="#cfe7ff" stop-opacity=".10"/><stop offset="45%" stop-color="#6ec7ff" stop-opacity=".06"/><stop offset="100%" stop-color="#001018" stop-opacity="0"/></radialGradient>
     <radialGradient id="halo" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#00f6d1" stop-opacity="0.25"/>
@@ -113,7 +128,6 @@ if(isNaN(ORBIT_PERIOD) || ORBIT_PERIOD<=0) ORBIT_PERIOD = 45;
 
 let reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function applyReducedMotionState(){
-  // When reducedMotion is true, orbital movement stops (om = 0 in positionNodes)
   document.body.classList.toggle('reduced-motion', reducedMotion);
   const btn = document.getElementById('reduceMotionBtn');
   if(btn) btn.textContent = reducedMotion ? 'Resume' : 'Pause';
@@ -133,7 +147,6 @@ const copy={
   'Vuforia':'AR work instructions and training that reuse upstream product data.'
 };
 
-// Base nodes with multipliers
 const baseNodes=[
   {name:'Digital Thread Nexus', r:0, ang:-90, size:160, color:color('--eco-plm'), mult:0},
   {name:'Windchill', r:340, ang:-10, size:90, color:color('--eco-plm'), mult:1},
@@ -160,7 +173,7 @@ const gHalos=document.getElementById('halos');
 const gNodes=document.getElementById('nodes');
 const tip=document.getElementById('tip');
 
-function omega(){ return (2*Math.PI)/ORBIT_PERIOD; } // radians per second (base)
+function omega(){ return (2*Math.PI)/ORBIT_PERIOD; }
 
 let nodes = baseNodes.map(n=>Object.assign({}, n, {baseAngRad: (n.ang||0)*(Math.PI/180), x:0, y:0}));
 const nodeByName = new Map();
@@ -178,15 +191,20 @@ function createElements(){
     circle.setAttribute('fill', n.color);
     circle.setAttribute('filter', 'url(#softGlow)');
     g.appendChild(circle);
+
+    // Better: label centered in circle, bold, always visible
     const text = document.createElementNS('http://www.w3.org/2000/svg','text');
     text.classList.add('inLabel');
+    text.setAttribute('x', 0);
+    text.setAttribute('y', 5); // vertical centering tweak
+    text.setAttribute('text-anchor','middle');
     text.textContent = n.name;
     g.appendChild(text);
+
     gNodes.appendChild(g);
     nodeByName.set(n.name, {g, circle, text});
   });
 
-  // Simple links
   edges.forEach(e=>{
     const from = nodes.find(n=>n.name===e[0]);
     const to = nodes.find(n=>n.name===e[1]);
@@ -198,10 +216,7 @@ function createElements(){
   });
 }
 
-function updateLinkAnimationsDuration(){
-  // adjust dashed animation speed if using CSS animation (no-op fallback)
-  // keep present for compatibility with existing code
-}
+function updateLinkAnimationsDuration(){}
 
 function positionNodes(t){
   const w = CENTER[0], h = CENTER[1];
@@ -220,10 +235,9 @@ function updateElements(){
     if(!entry) return;
     entry.g.setAttribute('transform', `translate(${n.x},${n.y})`);
     entry.text.setAttribute('x', 0);
-    entry.text.setAttribute('y', n.size/2 + 16);
+    entry.text.setAttribute('y', 5); // keep vertical centering
   });
 
-  // update links (simple straight lines)
   const paths = gLinks.querySelectorAll('path');
   let i=0;
   edges.forEach(e=>{
@@ -236,16 +250,14 @@ function updateElements(){
   });
 }
 
-// Create style keyframes once (for links if needed)
 const style = document.createElement('style');
 style.textContent = `@keyframes dash{0%{stroke-dasharray:0 600;stroke-opacity:.25} 40%{stroke-dasharray:120 600;stroke-opacity:.45} 100%{stroke-dasharray:600 600;stroke-opacity:.20}}`;
 document.head.appendChild(style);
 
 createElements();
 updateLinkAnimationsDuration();
-appliesReducedMotionState();
+applyReducedMotionState();
 
-// Animation loop
 let start = performance.now();
 let tipVisible = false;
 let lastPointer = {x:0,y:0};
@@ -253,19 +265,15 @@ function frame(now){
   const t = (now - start)/1000;
   positionNodes(t); updateElements();
 
-  // Throttled tooltip position update (if visible)
   if(tipVisible){
-    const x = Math.max(12, Math.min(window.innerWidth-12, lastPointer.x));
-    const y = Math.max(12, Math.min(window.innerHeight-12, lastPointer.y));
-    tip.style.left = x + 'px';
-    tip.style.top = y + 'px';
+    tip.style.left = lastPointer.x + 'px';
+    tip.style.top  = lastPointer.y + 'px';
   }
 
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-// Controls wiring
 document.querySelectorAll('button[data-period]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     ORBIT_PERIOD = parseFloat(btn.dataset.period);
@@ -283,7 +291,6 @@ slider.addEventListener('input', ()=>{
   updateLinkAnimationsDuration();
 });
 
-// Reduce-motion toggle button (pause/resume)
 const reduceBtn = document.getElementById('reduceMotionBtn');
 if(reduceBtn){
   reduceBtn.addEventListener('click', ()=>{
@@ -292,32 +299,30 @@ if(reduceBtn){
   });
 }
 
-// Tooltip handling (single delegated handler)
+// TOOLTIP: offset, readable, stays until pointer leaves node
 gNodes.addEventListener('mousemove', (ev)=>{
   const node = ev.target.closest && ev.target.closest('g.node');
   if(!node){ tip.style.opacity = 0; tipVisible = false; return; }
   const name = node.getAttribute('data-name') || node.querySelector('text')?.textContent;
   if(!name) { tip.style.opacity = 0; tipVisible = false; return; }
   const desc = copy[name] || name;
-  tip.innerHTML = `<b>${name}</b><br/>${desc}`;
+  tip.innerHTML = `<b>${name}</b><br/><span>${desc}</span>`;
   tip.style.opacity = 1;
-  // Position near pointer but keep tooltip inside viewport. We use transform:translate(-50%,-120%) so set left to pointer.x
-  lastPointer.x = ev.clientX;
-  lastPointer.y = Math.max(12, ev.clientY - 12);
+  lastPointer.x = ev.clientX + 22;
+  lastPointer.y = ev.clientY + 28;
   tipVisible = true;
 });
-
 gNodes.addEventListener('mouseleave', ()=>{ tip.style.opacity = 0; tipVisible = false; });
 
-// Accessibility: make tooltip keyboard accessible when nodes are focused
 gNodes.addEventListener('focusin', (ev)=>{
   const node = ev.target.closest && ev.target.closest('g.node');
   if(!node) return;
   const name = node.getAttribute('data-name') || node.querySelector('text')?.textContent;
   tip.innerHTML = `<b>${name}</b><br/>${copy[name]||name}`;
   tip.style.opacity = 1; tipVisible=true; lastPointer.x = window.innerWidth/2; lastPointer.y = window.innerHeight/2;
+  tip.style.left = `${lastPointer.x}px`;
+  tip.style.top = `${lastPointer.y}px`;
 });
-
 gNodes.addEventListener('focusout', ()=>{ tip.style.opacity = 0; tipVisible=false; });
 
 </script>
