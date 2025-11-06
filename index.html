@@ -161,6 +161,8 @@ function omega(){ return (2*Math.PI)/ORBIT_PERIOD; } // radians per second (base
 
 // Reduced-motion support: respect OS preference and allow user toggle
 let reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// When a node is hovered we freeze its motion to avoid mouseleave/mouseenter churn
+let hoveredNodeName = null;
 function applyReducedMotionState(){
   document.documentElement.classList.toggle('reduced', !!reducedMotion);
   // update link animations to none when reduced
@@ -268,12 +270,15 @@ function showTooltipFor(n){
   tip.setAttribute('aria-hidden','false');
   tip.style.opacity = '1';
   tipVisible = true;
+  // freeze the node under cursor to avoid it moving out from under the pointer
+  hoveredNodeName = n.name;
 }
 function hideTooltip(){
   tipActiveNode = null;
   tip.setAttribute('aria-hidden','true');
   tip.style.opacity = '0';
   tipVisible = false;
+  hoveredNodeName = null;
 }
 
 function positionNodes(t){
@@ -281,6 +286,9 @@ function positionNodes(t){
   const om = reducedMotion ? 0 : omega();
   for(const n of nodes){
     if(n.r===0){ n.x = w; n.y = h; continue; }
+    // if this node is currently hovered/frozen, leave its x/y unchanged to avoid
+    // the node moving out from under the pointer and causing rapid mouseleave/mouseenter
+    if(hoveredNodeName === n.name) continue;
     const ang = n.baseAngRad + om * n.mult * t;
     n.x = w + Math.cos(ang)*n.r;
     n.y = h + Math.sin(ang)*n.r;
